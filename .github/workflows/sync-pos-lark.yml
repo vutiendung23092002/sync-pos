@@ -38,11 +38,14 @@ jobs:
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
       LARK_APP_ID: ${{ secrets.LARK_APP_ID }}
       LARK_APP_SECRET: ${{ secrets.LARK_APP_SECRET }}
-      FROM: ${{ inputs.from }}
-      TO: ${{ inputs.to }}
-      DRY_RUN: ${{ inputs.dry_run || 'false' }}
-      SYNC_ENV: ${{ inputs.sync_env || 'production' }}
-      SYNC_LOOKBACK_DAYS: "14"
+      FROM: ${{ inputs.from || vars.SYNC_FROM || '' }}
+      TO: ${{ inputs.to || vars.SYNC_TO || '' }}
+      DRY_RUN: ${{ inputs.dry_run || vars.DRY_RUN || 'false' }}
+      SYNC_ENV: ${{ inputs.sync_env || vars.SYNC_ENV || 'production' }}
+      SYNC_LOOKBACK_DAYS: ${{ vars.SYNC_LOOKBACK_DAYS || '14' }}
+      DATABASE_SSL_REJECT_UNAUTHORIZED: ${{ vars.DATABASE_SSL_REJECT_UNAUTHORIZED || 'true' }}
+      LOG_LEVEL: ${{ vars.LOG_LEVEL || 'info' }}
+      LOG_PRETTY: "false"
 
     steps:
       - name: Checkout

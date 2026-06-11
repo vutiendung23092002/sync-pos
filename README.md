@@ -115,6 +115,33 @@ mỗi 2 giờ. `concurrency.group=pos-lark-sync` và PostgreSQL transaction advi
 lock cùng ngăn hai tiến trình chạy chồng nhau. Transaction lock tương thích với
 Supabase Transaction Pooler và tự nhả khi transaction kết thúc hoặc connection mất.
 
+Cron có thể lấy khoảng ngày từ GitHub Repository Variables:
+
+```txt
+SYNC_FROM
+SYNC_TO
+SYNC_ENV
+DRY_RUN
+SYNC_LOOKBACK_DAYS
+DATABASE_SSL_REJECT_UNAUTHORIZED
+LOG_LEVEL
+```
+
+Tạo tại `Settings → Secrets and variables → Actions → Variables`. `SYNC_FROM` và
+`SYNC_TO` phải cùng có giá trị hoặc cùng để trống. Khi chạy manual, input `from/to`
+được ưu tiên hơn Variables. Nếu cả hai Variables để trống, cron dùng
+`SYNC_LOOKBACK_DAYS`, mặc định `14`.
+
+Ví dụ cron chạy bảng test và chỉ lập kế hoạch:
+
+```txt
+SYNC_ENV=test
+DRY_RUN=true
+```
+
+Khi chạy manual, `sync_env` và `dry_run` trên form Run workflow được ưu tiên hơn
+Repository Variables.
+
 ## Trường Lark bắt buộc
 
 ### Order table
