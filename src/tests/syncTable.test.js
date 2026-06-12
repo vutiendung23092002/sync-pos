@@ -192,6 +192,71 @@ test("legacy record without Unique Key is deduplicated by mapped identity", asyn
   assert.equal(summary.deleteCount, 1);
 });
 
+test("matched legacy record without Unique Key is updated but not deleted", async () => {
+  const legacyFieldName = common.fieldSchema.find(
+    (field) => field.name.includes("tuỳ chỉnh"),
+  ).name;
+  const client = createLarkClient([
+    {
+      record_id: "legacy",
+      created_time: "100",
+      fields: {
+        [legacyFieldName]: "603579",
+      },
+    },
+  ]);
+  client.listFields = async () => [
+    { field_name: "Unique Key", type: 1 },
+    { field_name: legacyFieldName, type: 1 },
+  ];
+
+  const summary = await syncTable({
+    ...common,
+    larkClient: client,
+    mappedRecords: [
+      {
+        uniqueKey: "order:90085036889346",
+        fields: {
+          "Unique Key": "order:90085036889346",
+          [legacyFieldName]: "603579",
+        },
+      },
+    ],
+    legacyIdentityFieldNames: [legacyFieldName],
+    dryRun: false,
+    posFetchComplete: true,
+  });
+
+  assert.equal(summary.createCount, 0);
+  assert.equal(summary.updateCount, 1);
+  assert.equal(summary.deleteCount, 0);
+  assert.equal(client.calls.update.length, 1);
+  assert.equal(client.calls.delete.length, 0);
+});
+
+test("unidentified legacy record is preserved instead of deleted", async () => {
+  const client = createLarkClient([
+    {
+      record_id: "unknown-legacy",
+      created_time: "100",
+      fields: {},
+    },
+  ]);
+
+  const summary = await syncTable({
+    ...common,
+    larkClient: client,
+    mappedRecords: [],
+    legacyIdentityFieldNames: ["ID"],
+    dryRun: false,
+    posFetchComplete: true,
+  });
+
+  assert.equal(summary.deleteCount, 0);
+  assert.equal(summary.unidentifiedLarkPreservedCount, 1);
+  assert.equal(client.calls.delete.length, 0);
+});
+
 test("unchanged records are not updated and Last Synced At is ignored", async () => {
   const statusFieldName = common.fieldSchema.find(
     (field) => field.type === 3 && field.name.includes("thái"),

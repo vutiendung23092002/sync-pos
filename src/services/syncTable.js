@@ -128,21 +128,20 @@ export async function syncTable({
       return [fieldName, index];
     }),
   );
+  const resolveLarkRecordKey = (record) => {
+    const uniqueKey = getLarkTextField(record?.fields?.[uniqueFieldName]);
+    if (uniqueKey) return uniqueKey;
+    for (const fieldName of legacyIdentityFieldNames) {
+      const value = getLarkTextField(record?.fields?.[fieldName]);
+      const mappedKey = mappedLegacyIndexes.get(fieldName)?.get(value);
+      if (mappedKey) return mappedKey;
+    }
+    return null;
+  };
   const { canonicalMap, duplicateRecordIds } = buildLarkUniqueIndex(
     larkRecords,
     uniqueFieldName,
-    {
-      keyResolver: (record) => {
-        const uniqueKey = getLarkTextField(record?.fields?.[uniqueFieldName]);
-        if (uniqueKey) return uniqueKey;
-        for (const fieldName of legacyIdentityFieldNames) {
-          const value = getLarkTextField(record?.fields?.[fieldName]);
-          const mappedKey = mappedLegacyIndexes.get(fieldName)?.get(value);
-          if (mappedKey) return mappedKey;
-        }
-        return null;
-      },
-    },
+    { keyResolver: resolveLarkRecordKey },
   );
   const deleteStatusSet = new Set(deleteStatuses);
   const posKeySet = new Set(posRecords.map((record) => record.uniqueKey));
@@ -150,6 +149,7 @@ export async function syncTable({
   const toUpdate = [];
   const toDelete = new Set(duplicateRecordIds);
   let unchangedCount = 0;
+  let unidentifiedLarkPreservedCount = 0;
 
   for (const record of posRecords) {
     const existing = canonicalMap.get(record.uniqueKey);
@@ -179,8 +179,12 @@ export async function syncTable({
   if (posFetchComplete) {
     for (const larkRecord of larkRecords) {
       if (!larkRecord?.record_id || toDelete.has(larkRecord.record_id)) continue;
-      const key = getLarkTextField(larkRecord.fields?.[uniqueFieldName]);
-      if (!key || !posKeySet.has(key)) toDelete.add(larkRecord.record_id);
+      const key = resolveLarkRecordKey(larkRecord);
+      if (!key) {
+        unidentifiedLarkPreservedCount += 1;
+        continue;
+      }
+      if (!posKeySet.has(key)) toDelete.add(larkRecord.record_id);
     }
   } else {
     logger?.warn(
@@ -188,8 +192,26 @@ export async function syncTable({
       "POS fetch was not confirmed complete; missing-record deletion skipped",
     );
   }
+  if (unidentifiedLarkPreservedCount > 0) {
+    logger?.warn(
+      {
+        table_name: tableName,
+        unidentified_lark_preserved: unidentifiedLarkPreservedCount,
+      },
+      "Lark records without a resolvable identity were preserved",
+    );
+  }
 
   const deleteIds = [...toDelete];
+  const updateIds = new Set(toUpdate.map((record) => record.record_id));
+  const conflictingRecordIds = deleteIds.filter((recordId) =>
+    updateIds.has(recordId),
+  );
+  if (conflictingRecordIds.length) {
+    throw new Error(
+      `Data integrity error: records planned for both update and delete: ${conflictingRecordIds.join(", ")}`,
+    );
+  }
   logger?.info(
     {
       table_name: tableName,
@@ -199,6 +221,7 @@ export async function syncTable({
       unchanged: unchangedCount,
       delete: deleteIds.length,
       duplicates_delete: duplicateRecordIds.length,
+      unidentified_lark_preserved: unidentifiedLarkPreservedCount,
       pos_records: posRecords.length,
       lark_day_records: larkRecords.length,
       step: "table_plan",
@@ -242,6 +265,7 @@ export async function syncTable({
     unchangedCount,
     deleteCount: deleteIds.length,
     duplicateDeleteCount: duplicateRecordIds.length,
+    unidentifiedLarkPreservedCount,
     elapsedMs: Date.now() - startedAt,
   };
   logger?.info(
