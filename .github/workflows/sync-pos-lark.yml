@@ -40,6 +40,7 @@ jobs:
       LARK_APP_SECRET: ${{ secrets.LARK_APP_SECRET }}
       FROM: ${{ inputs.from || vars.SYNC_FROM || '' }}
       TO: ${{ inputs.to || vars.SYNC_TO || '' }}
+      SYNC_MODE: "backfill"
       DRY_RUN: ${{ inputs.dry_run || vars.DRY_RUN || 'false' }}
       SYNC_ENV: ${{ inputs.sync_env || vars.SYNC_ENV || 'production' }}
       TABLE_CONFIG_SOURCE: ${{ vars.TABLE_CONFIG_SOURCE || 'mapping' }}

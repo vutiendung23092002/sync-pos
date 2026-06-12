@@ -1,6 +1,11 @@
 import "dotenv/config";
 
-import { resolveDateRange } from "./utils/date.js";
+import { resolveSyncDateRange } from "./utils/date.js";
+
+const ADVISORY_LOCK_IDS = {
+  backfill: 987654322,
+  today: 987654323,
+};
 
 const REQUIRED_ENV = [
   "POS_API_KEY",
@@ -65,6 +70,14 @@ function parseTableConfigSource(value) {
   return normalized;
 }
 
+function parseSyncMode(value) {
+  const normalized = String(value || "backfill").trim().toLowerCase();
+  if (!ADVISORY_LOCK_IDS[normalized]) {
+    throw new Error("SYNC_MODE must be backfill or today");
+  }
+  return normalized;
+}
+
 export function loadConfig(env = process.env) {
   const missing = REQUIRED_ENV.filter((name) => !env[name]?.trim());
   if (missing.length) {
@@ -76,10 +89,12 @@ export function loadConfig(env = process.env) {
     "SYNC_LOOKBACK_DAYS",
     14,
   );
-  const dateRange = resolveDateRange({
+  const syncMode = parseSyncMode(env.SYNC_MODE);
+  const dateRange = resolveSyncDateRange({
     from: env.FROM,
     to: env.TO,
     lookbackDays: syncLookbackDays,
+    mode: syncMode,
   });
   const syncEnvironment = parseSyncEnvironment(env.SYNC_ENV);
 
@@ -99,6 +114,8 @@ export function loadConfig(env = process.env) {
     },
     dateRange,
     dryRun: parseBoolean(env.DRY_RUN, "DRY_RUN"),
+    syncMode,
+    advisoryLockId: ADVISORY_LOCK_IDS[syncMode],
     syncEnvironment,
     tableConfigSource: parseTableConfigSource(env.TABLE_CONFIG_SOURCE),
     tableTypes: TABLE_TYPES[syncEnvironment],

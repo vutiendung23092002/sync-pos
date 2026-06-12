@@ -16,6 +16,8 @@ const baseEnv = {
 test("production environment uses production table types by default", () => {
   const config = loadConfig(baseEnv);
   assert.equal(config.syncEnvironment, "production");
+  assert.equal(config.syncMode, "backfill");
+  assert.equal(config.advisoryLockId, 987654322);
   assert.equal(config.tableConfigSource, "mapping");
   assert.equal(config.databaseSslRejectUnauthorized, true);
   assert.deepEqual(config.tableTypes, {
@@ -72,5 +74,21 @@ test("invalid table config source throws", () => {
   assert.throws(
     () => loadConfig({ ...baseEnv, TABLE_CONFIG_SOURCE: "file" }),
     /TABLE_CONFIG_SOURCE must be mapping or database/,
+  );
+});
+
+test("today mode uses a separate advisory lock", () => {
+  const config = loadConfig({
+    ...baseEnv,
+    SYNC_MODE: "today",
+  });
+  assert.equal(config.syncMode, "today");
+  assert.equal(config.advisoryLockId, 987654323);
+});
+
+test("invalid sync mode throws", () => {
+  assert.throws(
+    () => loadConfig({ ...baseEnv, SYNC_MODE: "realtime" }),
+    /SYNC_MODE must be backfill or today/,
   );
 });

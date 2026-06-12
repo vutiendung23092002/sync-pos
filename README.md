@@ -42,8 +42,9 @@ $env:DRY_RUN="true"
 npm run sync
 ```
 
-Nếu không truyền `FROM` và `TO`, chương trình đồng bộ từ ngày hiện tại theo giờ
-Việt Nam trừ `SYNC_LOOKBACK_DAYS` đến ngày hiện tại. Mặc định là `14`.
+Nếu không truyền `FROM` và `TO`, `SYNC_MODE=backfill` đồng bộ từ ngày hiện tại
+theo giờ Việt Nam trừ `SYNC_LOOKBACK_DAYS` đến hôm qua. Mặc định là `14`.
+`SYNC_MODE=today` luôn chỉ đồng bộ ngày hiện tại.
 
 ## Biến môi trường
 
@@ -56,6 +57,7 @@ Việt Nam trừ `SYNC_LOOKBACK_DAYS` đến ngày hiện tại. Mặc định l
 | `LARK_APP_ID` | Có | Lark internal app ID |
 | `LARK_APP_SECRET` | Có | Lark internal app secret |
 | `SYNC_ENV` | Không | `production` mặc định; dùng `test` để chỉ ghi vào bảng test |
+| `SYNC_MODE` | Không | `backfill` mặc định; workflow ngày hiện tại dùng `today` |
 | `TABLE_CONFIG_SOURCE` | Không | `mapping` mặc định; dùng `database` để đọc Base ID/Table ID từ Supabase |
 | `FROM` | Không | Ngày đầu `YYYY-MM-DD`; phải đi cùng `TO` |
 | `TO` | Không | Ngày cuối `YYYY-MM-DD`; phải đi cùng `FROM` |
@@ -137,8 +139,9 @@ LARK_APP_SECRET
 
 Workflow hỗ trợ `workflow_dispatch` với `from`, `to`, `dry_run`; lịch tự động chạy
 mỗi 2 giờ. `concurrency.group=pos-lark-sync` và PostgreSQL transaction advisory
-lock cùng ngăn hai tiến trình chạy chồng nhau. Transaction lock tương thích với
-Supabase Transaction Pooler và tự nhả khi transaction kết thúc hoặc connection mất.
+lock backfill cùng ngăn hai tiến trình backfill chạy chồng nhau. Transaction lock
+tương thích với Supabase Transaction Pooler và tự nhả khi transaction kết thúc
+hoặc connection mất.
 
 Cron có thể lấy khoảng ngày từ GitHub Repository Variables:
 
@@ -165,6 +168,41 @@ DATABASE_SSL_REJECT_UNAUTHORIZED=false
 ```
 
 Workflow cũng mặc định dùng `false` nếu Variable này chưa được tạo.
+
+### Đồng bộ ngày hiện tại
+
+Workflow `.github/workflows/sync-pos-lark-today.yml` chỉ đồng bộ ngày hiện tại
+theo UTC+7:
+
+```txt
+FROM=
+TO=
+SYNC_MODE=today
+SYNC_LOOKBACK_DAYS=0
+```
+
+GitHub Actions chỉ hỗ trợ schedule ngắn nhất mỗi 5 phút, nên workflow dùng:
+
+```yaml
+schedule:
+  - cron: "*/5 * * * *"
+```
+
+Workflow lấy môi trường và nguồn cấu hình bảng từ Repository Variables:
+
+```txt
+SYNC_ENV=test
+TABLE_CONFIG_SOURCE=mapping
+```
+
+Đổi thành `SYNC_ENV=production` hoặc `TABLE_CONFIG_SOURCE=database` khi cần.
+Workflow today dùng advisory lock `987654323`, riêng với lock backfill
+`987654322`, nên hai workflow không chặn nhau.
+
+Workflow `FROM-TO` dùng `SYNC_MODE=backfill`. Nếu `TO` là hôm nay hoặc tương lai,
+chương trình tự cắt xuống hôm qua theo UTC+7. Vì vậy backfill và today có thể
+chạy song song mà không xử lý cùng ngày. Nếu `FROM` cũng lớn hơn hôm qua,
+backfill dừng với lỗi rõ ràng.
 
 Schema Lark được định nghĩa trực tiếp trong `src/schemas/larkSchema.js`, không
 phụ thuộc vào bất kỳ bảng Lark mẫu nào. Khi chạy thật, field thiếu được tạo từ

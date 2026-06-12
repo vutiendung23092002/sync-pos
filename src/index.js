@@ -18,7 +18,7 @@ async function main() {
   let locked = false;
 
   try {
-    locked = await dbClient.tryAdvisoryLock();
+    locked = await dbClient.tryAdvisoryLock(config.advisoryLockId);
     if (!locked) {
       logger.info({ event: "sync_skipped" }, "Another sync is running");
       return;
@@ -27,6 +27,8 @@ async function main() {
     logger.info(
       {
         sync_environment: config.syncEnvironment,
+        sync_mode: config.syncMode,
+        advisory_lock_id: config.advisoryLockId,
         td_order_table_type: config.tableTypes.td.order,
         td_item_table_type: config.tableTypes.td.item,
         cd_order_table_type: config.tableTypes.cd.order,

@@ -1,7 +1,7 @@
 import pg from "pg";
 
 const { Pool } = pg;
-const ADVISORY_LOCK_ID = 987654322;
+const DEFAULT_ADVISORY_LOCK_ID = 987654322;
 
 function prepareConnectionString(connectionString, sslRejectUnauthorized) {
   if (sslRejectUnauthorized) return connectionString;
@@ -91,14 +91,14 @@ export function createDbClient({ connectionString, sslRejectUnauthorized = true 
     );
   }
 
-  async function tryAdvisoryLock() {
+  async function tryAdvisoryLock(lockId = DEFAULT_ADVISORY_LOCK_ID) {
     if (lockConnection) throw new Error("Advisory lock is already held by this process");
     const client = await pool.connect();
     try {
       await client.query("BEGIN");
       const result = await client.query(
         "SELECT pg_try_advisory_xact_lock($1) AS locked;",
-        [ADVISORY_LOCK_ID],
+        [lockId],
       );
       if (result.rows[0]?.locked !== true) {
         await client.query("ROLLBACK");

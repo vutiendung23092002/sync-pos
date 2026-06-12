@@ -1,0 +1,47 @@
+name: Sync POS to Lark Today
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "*/5 * * * *"
+
+concurrency:
+  group: pos-lark-today-sync
+  cancel-in-progress: false
+
+jobs:
+  sync-today:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      POS_API_KEY: ${{ secrets.POS_API_KEY }}
+      POS_SHOP_ID: ${{ secrets.POS_SHOP_ID }}
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      LARK_APP_ID: ${{ secrets.LARK_APP_ID }}
+      LARK_APP_SECRET: ${{ secrets.LARK_APP_SECRET }}
+      FROM: ""
+      TO: ""
+      SYNC_MODE: "today"
+      SYNC_LOOKBACK_DAYS: "0"
+      DRY_RUN: ${{ vars.DRY_RUN || 'false' }}
+      SYNC_ENV: ${{ vars.SYNC_ENV || 'production' }}
+      TABLE_CONFIG_SOURCE: ${{ vars.TABLE_CONFIG_SOURCE || 'mapping' }}
+      DATABASE_SSL_REJECT_UNAUTHORIZED: ${{ vars.DATABASE_SSL_REJECT_UNAUTHORIZED || 'false' }}
+      LOG_LEVEL: ${{ vars.LOG_LEVEL || 'info' }}
+      LOG_PRETTY: "false"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Sync current Vietnam day
+        run: npm run sync

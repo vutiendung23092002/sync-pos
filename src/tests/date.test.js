@@ -5,6 +5,7 @@ import {
   enumerateDates,
   getVietnamDayUnixRange,
   resolveDateRange,
+  resolveSyncDateRange,
 } from "../utils/date.js";
 
 test("Vietnam day range uses explicit UTC+7 boundaries", () => {
@@ -29,4 +30,49 @@ test("cross-month range is inclusive", () => {
     "2026-04-01",
     "2026-04-02",
   ]);
+});
+
+test("backfill clamps TO to Vietnam yesterday", () => {
+  assert.deepEqual(
+    resolveSyncDateRange({
+      from: "2026-06-10",
+      to: "2026-06-15",
+      mode: "backfill",
+      now: new Date("2026-06-12T03:00:00Z"),
+    }),
+    {
+      from: "2026-06-10",
+      to: "2026-06-11",
+      dates: ["2026-06-10", "2026-06-11"],
+    },
+  );
+});
+
+test("today mode ignores FROM and TO and uses Vietnam today", () => {
+  assert.deepEqual(
+    resolveSyncDateRange({
+      from: "2026-01-01",
+      to: "2026-01-31",
+      mode: "today",
+      now: new Date("2026-06-11T18:00:00Z"),
+    }),
+    {
+      from: "2026-06-12",
+      to: "2026-06-12",
+      dates: ["2026-06-12"],
+    },
+  );
+});
+
+test("backfill starting today fails after clamping", () => {
+  assert.throws(
+    () =>
+      resolveSyncDateRange({
+        from: "2026-06-12",
+        to: "2026-06-12",
+        mode: "backfill",
+        now: new Date("2026-06-12T03:00:00Z"),
+      }),
+    /must not be after yesterday/,
+  );
 });

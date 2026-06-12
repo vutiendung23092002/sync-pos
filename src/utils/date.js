@@ -90,6 +90,36 @@ export function resolveDateRange({ from, to, lookbackDays = 14, now = new Date()
   };
 }
 
+export function resolveSyncDateRange({
+  from,
+  to,
+  lookbackDays = 14,
+  mode = "backfill",
+  now = new Date(),
+}) {
+  const today = getVietnamToday(now);
+  if (mode === "today") {
+    return { from: today, to: today, dates: [today] };
+  }
+  if (mode !== "backfill") {
+    throw new Error("SYNC_MODE must be backfill or today");
+  }
+
+  const yesterday = addDays(today, -1);
+  const requested = resolveDateRange({ from, to, lookbackDays, now });
+  const clampedTo = requested.to > yesterday ? yesterday : requested.to;
+  if (requested.from > clampedTo) {
+    throw new Error(
+      `Backfill FROM (${requested.from}) must not be after yesterday (${yesterday})`,
+    );
+  }
+  return {
+    from: requested.from,
+    to: clampedTo,
+    dates: enumerateDates(requested.from, clampedTo),
+  };
+}
+
 export function getMonthYear(dateString) {
   const { month, year } = parseDateString(dateString);
   return { month, year };
