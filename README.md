@@ -9,6 +9,10 @@ Lark Bitable:
 Mỗi ngày được xử lý tuần tự. Dữ liệu POS và Lark đều được phân trang, dedupe bằng
 `Unique Key`, sau đó batch create/update/delete tối đa 100 records/request.
 
+Record đã tồn tại chỉ được update khi ít nhất một field business thay đổi.
+`Last Synced At` không được dùng để quyết định thay đổi; field này chỉ cập nhật
+khi record thực sự được ghi lại. Summary mỗi bảng có thêm số lượng `unchanged`.
+
 ## Cài đặt local
 
 ```bash

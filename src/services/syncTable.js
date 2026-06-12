@@ -1,5 +1,8 @@
 import { buildLarkUniqueIndex, dedupeMappedRecords } from "../utils/dedupe.js";
-import { getLarkTextField } from "../utils/larkFields.js";
+import {
+  getChangedLarkFieldNames,
+  getLarkTextField,
+} from "../utils/larkFields.js";
 import { findLarkSchemaIssues } from "../schemas/larkSchema.js";
 
 export async function syncTable({
@@ -146,6 +149,7 @@ export async function syncTable({
   const toCreate = [];
   const toUpdate = [];
   const toDelete = new Set(duplicateRecordIds);
+  let unchangedCount = 0;
 
   for (const record of posRecords) {
     const existing = canonicalMap.get(record.uniqueKey);
@@ -157,7 +161,16 @@ export async function syncTable({
     }
 
     if (existing?.record_id) {
-      toUpdate.push({ record_id: existing.record_id, fields: record.fields });
+      const changedFieldNames = getChangedLarkFieldNames({
+        desiredFields: record.fields,
+        existingFields: existing.fields,
+        fieldSchema,
+      });
+      if (changedFieldNames.length) {
+        toUpdate.push({ record_id: existing.record_id, fields: record.fields });
+      } else {
+        unchangedCount += 1;
+      }
     } else {
       toCreate.push({ fields: record.fields });
     }
@@ -183,6 +196,7 @@ export async function syncTable({
       dry_run: dryRun,
       create: toCreate.length,
       update: toUpdate.length,
+      unchanged: unchangedCount,
       delete: deleteIds.length,
       duplicates_delete: duplicateRecordIds.length,
       pos_records: posRecords.length,
@@ -225,6 +239,7 @@ export async function syncTable({
     larkRecords: larkRecords.length,
     createCount: toCreate.length,
     updateCount: toUpdate.length,
+    unchangedCount,
     deleteCount: deleteIds.length,
     duplicateDeleteCount: duplicateRecordIds.length,
     elapsedMs: Date.now() - startedAt,
@@ -236,6 +251,7 @@ export async function syncTable({
       dry_run: dryRun,
       create: summary.createCount,
       update: summary.updateCount,
+      unchanged: summary.unchangedCount,
       delete: summary.deleteCount,
       elapsed_ms: summary.elapsedMs,
     },

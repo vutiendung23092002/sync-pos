@@ -191,3 +191,89 @@ test("legacy record without Unique Key is deduplicated by mapped identity", asyn
   assert.equal(summary.duplicateDeleteCount, 1);
   assert.equal(summary.deleteCount, 1);
 });
+
+test("unchanged records are not updated and Last Synced At is ignored", async () => {
+  const statusFieldName = common.fieldSchema.find(
+    (field) => field.type === 3 && field.name.includes("thái"),
+  ).name;
+  const client = createLarkClient([
+    {
+      record_id: "existing",
+      created_time: "100",
+      fields: {
+        "Unique Key": [{ text: "order:1", type: "text" }],
+        [statusFieldName]: "Đã xác nhận",
+        "Last Synced At": 1000,
+      },
+    },
+  ]);
+  client.listFields = async () => [
+    { field_name: "Unique Key", type: 1 },
+    { field_name: statusFieldName, type: 3 },
+    { field_name: "Last Synced At", type: 5 },
+  ];
+
+  const summary = await syncTable({
+    ...common,
+    larkClient: client,
+    mappedRecords: [
+      {
+        uniqueKey: "order:1",
+        fields: {
+          "Unique Key": "order:1",
+          [statusFieldName]: "Đã xác nhận",
+          "Last Synced At": 9999,
+        },
+      },
+    ],
+    dryRun: false,
+    posFetchComplete: true,
+  });
+
+  assert.equal(summary.updateCount, 0);
+  assert.equal(summary.unchangedCount, 1);
+  assert.equal(client.calls.update.length, 0);
+});
+
+test("changed business fields still update the existing record", async () => {
+  const statusFieldName = common.fieldSchema.find(
+    (field) => field.type === 3 && field.name.includes("thái"),
+  ).name;
+  const client = createLarkClient([
+    {
+      record_id: "existing",
+      created_time: "100",
+      fields: {
+        "Unique Key": "order:1",
+        [statusFieldName]: "Mới",
+        "Last Synced At": 1000,
+      },
+    },
+  ]);
+  client.listFields = async () => [
+    { field_name: "Unique Key", type: 1 },
+    { field_name: statusFieldName, type: 3 },
+    { field_name: "Last Synced At", type: 5 },
+  ];
+
+  const summary = await syncTable({
+    ...common,
+    larkClient: client,
+    mappedRecords: [
+      {
+        uniqueKey: "order:1",
+        fields: {
+          "Unique Key": "order:1",
+          [statusFieldName]: "Đã xác nhận",
+          "Last Synced At": 9999,
+        },
+      },
+    ],
+    dryRun: false,
+    posFetchComplete: true,
+  });
+
+  assert.equal(summary.updateCount, 1);
+  assert.equal(summary.unchangedCount, 0);
+  assert.equal(client.calls.update.length, 1);
+});

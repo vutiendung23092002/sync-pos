@@ -82,11 +82,18 @@ function totalSummaries(summaries) {
     (total, summary) => ({
       create: total.create + summary.createCount,
       update: total.update + summary.updateCount,
+      unchanged: total.unchanged + summary.unchangedCount,
       delete: total.delete + summary.deleteCount,
       duplicates_deleted:
         total.duplicates_deleted + summary.duplicateDeleteCount,
     }),
-    { create: 0, update: 0, delete: 0, duplicates_deleted: 0 },
+    {
+      create: 0,
+      update: 0,
+      unchanged: 0,
+      delete: 0,
+      duplicates_deleted: 0,
+    },
   );
 }
 
