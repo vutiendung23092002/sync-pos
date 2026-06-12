@@ -54,19 +54,59 @@ export async function withRetry(
 export async function fetchJsonWithRetry(
   url,
   options = {},
-  { fetchImpl = fetch, logger, operation = "HTTP request" } = {},
+  {
+    fetchImpl = fetch,
+    logger,
+    operation = "HTTP request",
+    timeoutMs = 60_000,
+    maxAttempts = 5,
+    baseDelayMs = 1000,
+  } = {},
 ) {
   const response = await withRetry(
-    async () => {
-      const currentResponse = await fetchImpl(url, options);
-      if (isRetryableStatus(currentResponse.status)) {
-        const error = new Error(`${operation} failed with HTTP ${currentResponse.status}`);
-        error.response = currentResponse;
-        throw error;
+    async (attempt) => {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), timeoutMs);
+      const externalSignal = options.signal;
+      const abortFromExternal = () =>
+        controller.abort(externalSignal.reason);
+      if (externalSignal?.aborted) {
+        abortFromExternal();
+      } else {
+        externalSignal?.addEventListener("abort", abortFromExternal, {
+          once: true,
+        });
       }
-      return currentResponse;
+
+      try {
+        const currentResponse = await fetchImpl(url, {
+          ...options,
+          signal: controller.signal,
+        });
+        if (isRetryableStatus(currentResponse.status)) {
+          const error = new Error(
+            `${operation} failed with HTTP ${currentResponse.status}`,
+          );
+          error.response = currentResponse;
+          throw error;
+        }
+        return currentResponse;
+      } catch (error) {
+        if (controller.signal.aborted && !externalSignal?.aborted) {
+          throw new Error(
+            `${operation} timed out after ${timeoutMs}ms (attempt ${attempt})`,
+            { cause: error },
+          );
+        }
+        throw error;
+      } finally {
+        clearTimeout(timeout);
+        externalSignal?.removeEventListener("abort", abortFromExternal);
+      }
     },
     {
+      maxAttempts,
+      baseDelayMs,
       onRetry: ({ attempt, delayMs, error }) => {
         logger?.warn(
           { operation, attempt, delay_ms: delayMs, error: error.message },

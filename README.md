@@ -52,6 +52,7 @@ Việt Nam trừ `SYNC_LOOKBACK_DAYS` đến ngày hiện tại. Mặc định l
 | `LARK_APP_ID` | Có | Lark internal app ID |
 | `LARK_APP_SECRET` | Có | Lark internal app secret |
 | `SYNC_ENV` | Không | `production` mặc định; dùng `test` để chỉ ghi vào bảng test |
+| `TABLE_CONFIG_SOURCE` | Không | `mapping` mặc định; dùng `database` để đọc Base ID/Table ID từ Supabase |
 | `FROM` | Không | Ngày đầu `YYYY-MM-DD`; phải đi cùng `TO` |
 | `TO` | Không | Ngày cuối `YYYY-MM-DD`; phải đi cùng `FROM` |
 | `DRY_RUN` | Không | `false` mặc định |
@@ -59,9 +60,29 @@ Việt Nam trừ `SYNC_LOOKBACK_DAYS` đến ngày hiện tại. Mặc định l
 | `LOG_LEVEL` | Không | Pino log level, mặc định `info` |
 | `LOG_PRETTY` | Không | `true` để log local có màu và dễ đọc; Actions nên giữ `false` |
 
-Table ID và Base ID được đọc theo tháng/năm từ
-`han_lark_base.tables`. Giá vốn được đọc từ
-`kiot_legiahan.product_cost` bằng parameterized query.
+Table ID và Base ID mặc định được đọc từ
+`src/config/larkTableMapping.js`. Đặt `TABLE_CONFIG_SOURCE=database` để đọc từ
+`han_lark_base.tables_pos`. Supabase vẫn được dùng cho advisory lock và giá vốn
+trong `kiot_legiahan.product_cost`.
+
+In cấu hình bảng hiện tại từ Supabase:
+
+```bash
+npm run table-config:show
+npm run table-config:show -- --env=test
+npm run table-config:show -- --type=facebook_order_td
+```
+
+In mapping đang lưu trong project:
+
+```bash
+npm run table-config:show -- --source=mapping
+```
+
+Script dùng Lark API để lấy tên bảng thật theo `base_id + table_id`, sau đó in
+`console.table`. Cột `setting_table_name` là tên đang lưu trong Supabase, còn
+`table_name` là tên hiện tại trên Lark. Script trả exit code khác `0` nếu thiếu
+tháng, trùng `type + month`, hoặc `table_id` không tồn tại/không truy cập được.
 
 ## Chạy vào bảng test
 
@@ -121,6 +142,7 @@ Cron có thể lấy khoảng ngày từ GitHub Repository Variables:
 SYNC_FROM
 SYNC_TO
 SYNC_ENV
+TABLE_CONFIG_SOURCE
 DRY_RUN
 SYNC_LOOKBACK_DAYS
 DATABASE_SSL_REJECT_UNAUTHORIZED
@@ -168,7 +190,8 @@ facebook_order_item_cd[_test]  theo trường Tháng CD
 
 Tra cứu cấu hình chỉ dùng `type + month`, không dùng `year`. Vì vậy dữ liệu
 `2025.12` và `2026.12` cùng dùng cấu hình tháng `12`. Trong
-`han_lark_base.tables` phải có đúng một dòng cho mỗi cặp `type + month`.
+mapping hoặc `han_lark_base.tables_pos` phải có đúng một cấu hình cho mỗi cặp
+`type + month`.
 
 Để tạo đủ cấu hình 12 tháng cho môi trường test, chạy file:
 

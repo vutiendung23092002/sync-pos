@@ -57,6 +57,14 @@ function parseSyncEnvironment(value) {
   return normalized;
 }
 
+function parseTableConfigSource(value) {
+  const normalized = String(value || "mapping").trim().toLowerCase();
+  if (!["mapping", "database"].includes(normalized)) {
+    throw new Error("TABLE_CONFIG_SOURCE must be mapping or database");
+  }
+  return normalized;
+}
+
 export function loadConfig(env = process.env) {
   const missing = REQUIRED_ENV.filter((name) => !env[name]?.trim());
   if (missing.length) {
@@ -92,6 +100,7 @@ export function loadConfig(env = process.env) {
     dateRange,
     dryRun: parseBoolean(env.DRY_RUN, "DRY_RUN"),
     syncEnvironment,
+    tableConfigSource: parseTableConfigSource(env.TABLE_CONFIG_SOURCE),
     tableTypes: TABLE_TYPES[syncEnvironment],
     syncLookbackDays,
     logLevel: env.LOG_LEVEL || "info",

@@ -16,6 +16,7 @@ const baseEnv = {
 test("production environment uses production table types by default", () => {
   const config = loadConfig(baseEnv);
   assert.equal(config.syncEnvironment, "production");
+  assert.equal(config.tableConfigSource, "mapping");
   assert.equal(config.databaseSslRejectUnauthorized, true);
   assert.deepEqual(config.tableTypes, {
     td: {
@@ -56,5 +57,20 @@ test("invalid sync environment throws", () => {
   assert.throws(
     () => loadConfig({ ...baseEnv, SYNC_ENV: "staging" }),
     /SYNC_ENV must be production or test/,
+  );
+});
+
+test("database table config source can be selected", () => {
+  const config = loadConfig({
+    ...baseEnv,
+    TABLE_CONFIG_SOURCE: "database",
+  });
+  assert.equal(config.tableConfigSource, "database");
+});
+
+test("invalid table config source throws", () => {
+  assert.throws(
+    () => loadConfig({ ...baseEnv, TABLE_CONFIG_SOURCE: "file" }),
+    /TABLE_CONFIG_SOURCE must be mapping or database/,
   );
 });

@@ -10,6 +10,7 @@
     "sync": "node src/index.js",
     "schema:check": "node scripts/sync-lark-schema.js",
     "schema:apply": "node scripts/sync-lark-schema.js --apply",
+    "table-config:show": "node scripts/show-lark-table-config.js",
     "test": "node --test"
   },
   "dependencies": {

@@ -42,6 +42,7 @@ jobs:
       TO: ${{ inputs.to || vars.SYNC_TO || '' }}
       DRY_RUN: ${{ inputs.dry_run || vars.DRY_RUN || 'false' }}
       SYNC_ENV: ${{ inputs.sync_env || vars.SYNC_ENV || 'production' }}
+      TABLE_CONFIG_SOURCE: ${{ vars.TABLE_CONFIG_SOURCE || 'mapping' }}
       SYNC_LOOKBACK_DAYS: ${{ vars.SYNC_LOOKBACK_DAYS || '14' }}
       DATABASE_SSL_REJECT_UNAUTHORIZED: ${{ vars.DATABASE_SSL_REJECT_UNAUTHORIZED || 'false' }}
       LOG_LEVEL: ${{ vars.LOG_LEVEL || 'info' }}

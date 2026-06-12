@@ -35,6 +35,15 @@ export function createPosClient({ fetchImpl = fetch, logger } = {}) {
       url.searchParams.append("order_sources", '["-3"]');
       url.searchParams.append("order_sources", '["-9"]');
 
+      logger?.info(
+        {
+          date,
+          step: "pos_page_start",
+          page: pageNumber,
+          expected_total_pages: expectedTotalPages,
+        },
+        `POS page ${pageNumber} request started`,
+      );
       const body = await fetchJsonWithRetry(
         url,
         { headers: { accept: "application/json" } },
