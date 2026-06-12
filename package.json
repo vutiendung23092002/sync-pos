@@ -8,6 +8,8 @@
   },
   "scripts": {
     "sync": "node src/index.js",
+    "schema:check": "node scripts/sync-lark-schema.js",
+    "schema:apply": "node scripts/sync-lark-schema.js --apply",
     "test": "node --test"
   },
   "dependencies": {

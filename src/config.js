@@ -12,12 +12,24 @@ const REQUIRED_ENV = [
 
 const TABLE_TYPES = {
   production: {
-    order: "facebook_order_td",
-    item: "facebook_order_item_td",
+    td: {
+      order: "facebook_order_td",
+      item: "facebook_order_item_td",
+    },
+    cd: {
+      order: "facebook_order_cd",
+      item: "facebook_order_item_cd",
+    },
   },
   test: {
-    order: "facebook_order_td_test",
-    item: "facebook_order_item_td_test",
+    td: {
+      order: "facebook_order_td_test",
+      item: "facebook_order_item_td_test",
+    },
+    cd: {
+      order: "facebook_order_cd_test",
+      item: "facebook_order_item_cd_test",
+    },
   },
 };
 
@@ -76,6 +88,14 @@ export function loadConfig(env = process.env) {
     lark: {
       appId: env.LARK_APP_ID,
       appSecret: env.LARK_APP_SECRET,
+      schemaTemplates: {
+        baseId:
+          env.LARK_TEMPLATE_BASE_ID ?? "HlQubD0ksa13z8sndtvlz2gSgVh",
+        orderTableId:
+          env.LARK_TEMPLATE_ORDER_TABLE_ID ?? "tblemP2P0H0TDsRc",
+        itemTableId:
+          env.LARK_TEMPLATE_ITEM_TABLE_ID ?? "tblgBf5wFHpY8rUW",
+      },
     },
     dateRange,
     dryRun: parseBoolean(env.DRY_RUN, "DRY_RUN"),

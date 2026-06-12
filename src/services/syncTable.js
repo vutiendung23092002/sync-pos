@@ -15,6 +15,7 @@ export async function syncTable({
   deleteStatuses = [],
   dryRun = false,
   posFetchComplete = false,
+  fieldTemplate,
   logger,
 }) {
   const startedAt = Date.now();
@@ -40,7 +41,7 @@ export async function syncTable({
     dateFieldName,
     createIfMissing: !dryRun,
   });
-  const tableFields = await larkClient.listFields({
+  let tableFields = await larkClient.listFields({
     token,
     baseId: tableConfig.base_id,
     tableId: tableConfig.table_id,
@@ -48,9 +49,35 @@ export async function syncTable({
   const existingFieldNames = new Set(
     tableFields.map((field) => field?.field_name).filter(Boolean),
   );
-  const missingFieldNames = requiredFieldNames.filter(
+  let missingFieldNames = requiredFieldNames.filter(
     (fieldName) => !existingFieldNames.has(fieldName),
   );
+  if (
+    missingFieldNames.length &&
+    !dryRun &&
+    fieldTemplate &&
+    typeof larkClient.ensureFieldsFromTemplate === "function"
+  ) {
+    await larkClient.ensureFieldsFromTemplate({
+      token,
+      baseId: tableConfig.base_id,
+      tableId: tableConfig.table_id,
+      requiredFieldNames,
+      templateBaseId: fieldTemplate.baseId,
+      templateTableId: fieldTemplate.tableId,
+    });
+    tableFields = await larkClient.listFields({
+      token,
+      baseId: tableConfig.base_id,
+      tableId: tableConfig.table_id,
+    });
+    const refreshedNames = new Set(
+      tableFields.map((field) => field?.field_name).filter(Boolean),
+    );
+    missingFieldNames = requiredFieldNames.filter(
+      (fieldName) => !refreshedNames.has(fieldName),
+    );
+  }
   if (missingFieldNames.length) {
     throw new Error(
       `Lark table ${tableName} (${tableConfig.table_id}) is missing fields: ${missingFieldNames.join(", ")}`,

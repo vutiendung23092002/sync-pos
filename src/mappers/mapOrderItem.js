@@ -22,7 +22,10 @@ export function mapOrderItems(
 ) {
   const { orderId, systemId, orderUniqueKey } = getOrderUniqueParts(order);
   const statusHistory = buildStatusHistory(order.status_history);
-  const { monthCd, dayCd, monthTd } = getPeriodFields(statusHistory);
+  const { monthCd, dayCd, monthTd } = getPeriodFields(
+    statusHistory,
+    order.inserted_at,
+  );
   const orderDiscount =
     Number(order.total_discount ?? 0) +
     Number(order.prepaid_by_point?.money ?? 0) +

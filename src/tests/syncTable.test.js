@@ -114,6 +114,43 @@ test("missing Lark fields fail before any write", async () => {
   assert.deepEqual(client.calls, { create: [], update: [], delete: [] });
 });
 
+test("missing Lark fields are created from template before writing", async () => {
+  const client = createLarkClient([]);
+  let fieldsCreated = false;
+  client.listFields = async () =>
+    fieldsCreated
+      ? [{ field_name: "Unique Key" }, { field_name: "Last Synced At" }]
+      : [{ field_name: "Unique Key" }];
+  client.ensureFieldsFromTemplate = async (params) => {
+    assert.equal(params.templateBaseId, "template-base");
+    assert.equal(params.templateTableId, "template-table");
+    fieldsCreated = true;
+  };
+
+  const summary = await syncTable({
+    ...common,
+    larkClient: client,
+    mappedRecords: [
+      {
+        uniqueKey: "order:1",
+        fields: {
+          "Unique Key": "order:1",
+          "Last Synced At": 1,
+        },
+      },
+    ],
+    fieldTemplate: {
+      baseId: "template-base",
+      tableId: "template-table",
+    },
+    dryRun: false,
+    posFetchComplete: true,
+  });
+
+  assert.equal(summary.createCount, 1);
+  assert.equal(client.calls.create.length, 1);
+});
+
 test("legacy record without Unique Key is deduplicated by mapped identity", async () => {
   const client = createLarkClient([
     {

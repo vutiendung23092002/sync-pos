@@ -18,8 +18,14 @@ test("production environment uses production table types by default", () => {
   assert.equal(config.syncEnvironment, "production");
   assert.equal(config.databaseSslRejectUnauthorized, true);
   assert.deepEqual(config.tableTypes, {
-    order: "facebook_order_td",
-    item: "facebook_order_item_td",
+    td: {
+      order: "facebook_order_td",
+      item: "facebook_order_item_td",
+    },
+    cd: {
+      order: "facebook_order_cd",
+      item: "facebook_order_item_cd",
+    },
   });
 });
 
@@ -35,8 +41,14 @@ test("test environment only uses test table types", () => {
   const config = loadConfig({ ...baseEnv, SYNC_ENV: "test" });
   assert.equal(config.syncEnvironment, "test");
   assert.deepEqual(config.tableTypes, {
-    order: "facebook_order_td_test",
-    item: "facebook_order_item_td_test",
+    td: {
+      order: "facebook_order_td_test",
+      item: "facebook_order_item_td_test",
+    },
+    cd: {
+      order: "facebook_order_cd_test",
+      item: "facebook_order_item_cd_test",
+    },
   });
 });
 

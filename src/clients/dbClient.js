@@ -27,20 +27,45 @@ export function createDbClient({ connectionString, sslRejectUnauthorized = true 
     return pool.query(text, values);
   }
 
-  async function getLarkTableConfig({ type, month, year }) {
+  async function getLarkTableConfig({ type, month }) {
     const result = await query(
       `SELECT base_id, table_id, type, month, year
-       FROM han_lark_base.tables
+       FROM han_lark_base.tables_pos
        WHERE type = $1
          AND month = $2
-         AND year = $3
-       LIMIT 1;`,
-      [type, month, year],
+       ORDER BY updated_at DESC NULLS LAST;`,
+      [type, month],
     );
     if (!result.rows[0]) {
-      throw new Error(`Missing Lark table config: type=${type}, month=${month}, year=${year}`);
+      throw new Error(`Missing Lark table config: type=${type}, month=${month}`);
+    }
+    if (result.rows.length > 1) {
+      throw new Error(
+        `Duplicate Lark table config: type=${type}, month=${month}. Year is no longer used, so keep only one row per type/month.`,
+      );
     }
     return result.rows[0];
+  }
+
+  async function getLarkTableConfigs({ type }) {
+    const result = await query(
+      `SELECT base_id, table_id, type, month, year
+       FROM han_lark_base.tables_pos
+       WHERE type = $1
+       ORDER BY month, updated_at DESC NULLS LAST;`,
+      [type],
+    );
+    const byMonth = new Map();
+    for (const row of result.rows) {
+      const month = Number(row.month);
+      if (byMonth.has(month)) {
+        throw new Error(
+          `Duplicate Lark table config: type=${type}, month=${month}. Year is no longer used.`,
+        );
+      }
+      byMonth.set(month, row);
+    }
+    return [...byMonth.values()];
   }
 
   async function getProductCostMap(skus) {
@@ -111,6 +136,7 @@ export function createDbClient({ connectionString, sslRejectUnauthorized = true 
   return {
     query,
     getLarkTableConfig,
+    getLarkTableConfigs,
     getProductCostMap,
     tryAdvisoryLock,
     releaseAdvisoryLock,

@@ -43,7 +43,7 @@ jobs:
       DRY_RUN: ${{ inputs.dry_run || vars.DRY_RUN || 'false' }}
       SYNC_ENV: ${{ inputs.sync_env || vars.SYNC_ENV || 'production' }}
       SYNC_LOOKBACK_DAYS: ${{ vars.SYNC_LOOKBACK_DAYS || '14' }}
-      DATABASE_SSL_REJECT_UNAUTHORIZED: ${{ vars.DATABASE_SSL_REJECT_UNAUTHORIZED || 'true' }}
+      DATABASE_SSL_REJECT_UNAUTHORIZED: ${{ vars.DATABASE_SSL_REJECT_UNAUTHORIZED || 'false' }}
       LOG_LEVEL: ${{ vars.LOG_LEVEL || 'info' }}
       LOG_PRETTY: "false"
 

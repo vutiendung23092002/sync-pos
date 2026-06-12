@@ -112,9 +112,21 @@ export function getPromotionNames(promotions) {
   return names.length ? names.join("; ") : null;
 }
 
-export function getPeriodFields(statusHistoryText) {
+function getVietnamDateParts(isoString) {
+  const value = formatUtcToUnixMs(isoString);
+  if (value == null) return null;
+  const date = new Date(value + 7 * 60 * 60 * 1000);
+  return {
+    day: String(date.getUTCDate()).padStart(2, "0"),
+    month: String(date.getUTCMonth() + 1).padStart(2, "0"),
+    year: String(date.getUTCFullYear()),
+  };
+}
+
+export function getPeriodFields(statusHistoryText, insertedAt = null) {
   const confirmed = extractConfirmedDate(statusHistoryText);
-  const created = extractCreatedDate(statusHistoryText);
+  const created =
+    extractCreatedDate(statusHistoryText) ?? getVietnamDateParts(insertedAt);
   return {
     monthCd: confirmed ? `${confirmed.year}.${confirmed.month}` : null,
     dayCd: confirmed ? `${confirmed.year}.${confirmed.month}.${confirmed.day}` : null,

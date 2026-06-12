@@ -27,8 +27,10 @@ async function main() {
     logger.info(
       {
         sync_environment: config.syncEnvironment,
-        order_table_type: config.tableTypes.order,
-        item_table_type: config.tableTypes.item,
+        td_order_table_type: config.tableTypes.td.order,
+        td_item_table_type: config.tableTypes.td.item,
+        cd_order_table_type: config.tableTypes.cd.order,
+        cd_item_table_type: config.tableTypes.cd.item,
         dry_run: config.dryRun,
         from: config.dateRange.from,
         to: config.dateRange.to,

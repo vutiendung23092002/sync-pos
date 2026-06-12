@@ -132,6 +132,49 @@ Tạo tại `Settings → Secrets and variables → Actions → Variables`. `SYN
 được ưu tiên hơn Variables. Nếu cả hai Variables để trống, cron dùng
 `SYNC_LOOKBACK_DAYS`, mặc định `14`.
 
+Với Supabase Pooler của project này:
+
+```txt
+DATABASE_SSL_REJECT_UNAUTHORIZED=false
+```
+
+Workflow cũng mặc định dùng `false` nếu Variable này chưa được tạo.
+
+## Phân bảng TD/CD theo tháng
+
+Mỗi đơn được đồng bộ độc lập vào 4 loại bảng:
+
+```txt
+facebook_order_td[_test]       theo trường Tháng TD
+facebook_order_item_td[_test]  theo trường Tháng TD
+facebook_order_cd[_test]       theo trường Tháng CD
+facebook_order_item_cd[_test]  theo trường Tháng CD
+```
+
+Tra cứu cấu hình chỉ dùng `type + month`, không dùng `year`. Vì vậy dữ liệu
+`2025.12` và `2026.12` cùng dùng cấu hình tháng `12`. Trong
+`han_lark_base.tables` phải có đúng một dòng cho mỗi cặp `type + month`.
+
+Để tạo đủ cấu hình 12 tháng cho môi trường test, chạy file:
+
+```txt
+sql/seed-test-table-config-12-months.sql
+```
+
+File seed hiện trỏ cả 12 tháng của mỗi type vào cùng một bảng Lark test. Khi có
+bảng Lark riêng cho từng tháng, đổi `table_id` tương ứng trước khi chạy SQL.
+
+Hai bảng CD phải có cùng các field ghi dữ liệu như bảng TD tương ứng. Tối thiểu:
+
+```txt
+Order CD: Unique Key, Last Synced At, Ngày tạo đơn, Ngày TD, Tháng CD
+Item CD: Unique Key, Order Unique Key, Last Synced At, Thời gian tạo đơn, Ngày TD, Tháng CD
+```
+
+`Ngày TD` là Formula và sẽ được tạo tự động khi chạy thật nếu chưa có. Các field
+còn thiếu khác sẽ làm tiến trình dừng trước khi ghi dữ liệu để tránh mất field
+hoặc tạo trùng.
+
 Ví dụ cron chạy bảng test và chỉ lập kế hoạch:
 
 ```txt

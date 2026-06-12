@@ -12,13 +12,16 @@ import {
 } from "./helpers.js";
 import { mapOrderStatus } from "./statusMap.js";
 
-export const ZERO_REVENUE_STATUS = new Set([5, 6, 7]);
+export const ZERO_REVENUE_STATUS = new Set([4, 5, 6, 7]);
 
 export function mapOrder(data, { now = Date.now } = {}) {
   const { orderId, systemId, orderUniqueKey } = getOrderUniqueParts(data);
   const status = Number(data.status);
   const statusHistory = buildStatusHistory(data.status_history);
-  const { monthCd, dayCd, monthTd } = getPeriodFields(statusHistory);
+  const { monthCd, dayCd, monthTd } = getPeriodFields(
+    statusHistory,
+    data.inserted_at,
+  );
   const totalDiscount =
     calcItemTotalDiscount(data.items) +
     Number(data.prepaid_by_point?.money ?? 0) +
