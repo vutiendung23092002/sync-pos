@@ -14,8 +14,6 @@ function assertLarkSuccess(body, operation) {
 }
 
 export function createLarkClient({ fetchImpl = fetch, logger, batchSize = 100 } = {}) {
-  const templateFieldCache = new Map();
-
   async function request(url, options, operation) {
     const body = await fetchJsonWithRetry(url, options, {
       fetchImpl,
@@ -159,6 +157,35 @@ export function createLarkClient({ fetchImpl = fetch, logger, batchSize = 100 } 
     return fields;
   }
 
+  async function listTables({ token, baseId }) {
+    const tables = [];
+    let pageToken = null;
+
+    do {
+      const url = new URL(
+        `${LARK_API_BASE}/bitable/v1/apps/${encodeURIComponent(baseId)}/tables`,
+      );
+      url.searchParams.set("page_size", "100");
+      if (pageToken) url.searchParams.set("page_token", pageToken);
+      const data = await request(
+        url,
+        { headers: { authorization: `Bearer ${token}` } },
+        `Lark list tables ${baseId}`,
+      );
+      const items = data.items ?? [];
+      if (!Array.isArray(items)) {
+        throw new Error(`Lark list tables ${baseId} returned invalid items`);
+      }
+      tables.push(...items);
+      if (data.has_more === true && !data.page_token) {
+        throw new Error(`Lark list tables ${baseId} has_more without page_token`);
+      }
+      pageToken = data.has_more === true ? data.page_token : null;
+    } while (pageToken);
+
+    return tables;
+  }
+
   async function ensureDayKeyFormulaField({
     token,
     baseId,
@@ -220,64 +247,32 @@ export function createLarkClient({ fetchImpl = fetch, logger, batchSize = 100 } 
     return data.field;
   }
 
-  function sanitizeFieldProperty(property) {
-    if (!property || typeof property !== "object") return undefined;
-    const sanitized = structuredClone(property);
-    if (Array.isArray(sanitized.options)) {
-      sanitized.options = sanitized.options.map((option) => ({
-        name: option.name,
-        color: option.color,
-      }));
-    }
-    return Object.keys(sanitized).length ? sanitized : undefined;
-  }
-
-  async function getTemplateFieldMap({ token, baseId, tableId }) {
-    const cacheKey = `${baseId}:${tableId}`;
-    if (!templateFieldCache.has(cacheKey)) {
-      const fields = await listFields({ token, baseId, tableId });
-      templateFieldCache.set(
-        cacheKey,
-        new Map(fields.map((field) => [field.field_name, field])),
-      );
-    }
-    return templateFieldCache.get(cacheKey);
-  }
-
-  async function ensureFieldsFromTemplate({
+  async function ensureFieldsFromSchema({
     token,
     baseId,
     tableId,
     requiredFieldNames,
-    templateBaseId,
-    templateTableId,
+    schema,
   }) {
     const targetFields = await listFields({ token, baseId, tableId });
-    const existingNames = new Set(
-      targetFields.map((field) => field.field_name),
+    const existingByName = new Map(
+      targetFields.map((field) => [field.field_name, field]),
     );
+    const schemaByName = new Map(schema.map((field) => [field.name, field]));
     const missingNames = requiredFieldNames.filter(
-      (fieldName) => !existingNames.has(fieldName),
+      (fieldName) => !existingByName.has(fieldName),
     );
-    if (!missingNames.length) return [];
-
-    const templateFields = await getTemplateFieldMap({
-      token,
-      baseId: templateBaseId,
-      tableId: templateTableId,
-    });
     const unavailable = missingNames.filter(
-      (fieldName) => !templateFields.has(fieldName),
+      (fieldName) => !schemaByName.has(fieldName),
     );
     if (unavailable.length) {
       throw new Error(
-        `Lark template ${templateTableId} is missing fields: ${unavailable.join(", ")}`,
+        `Schema-as-code is missing fields: ${unavailable.join(", ")}`,
       );
     }
 
     for (const fieldName of missingNames) {
-      const templateField = templateFields.get(fieldName);
-      const property = sanitizeFieldProperty(templateField.property);
+      const schemaField = schemaByName.get(fieldName);
       await new Promise((resolve) => setTimeout(resolve, 700));
       await request(
         `${LARK_API_BASE}/bitable/v1/apps/${encodeURIComponent(baseId)}/tables/${encodeURIComponent(tableId)}/fields`,
@@ -288,9 +283,11 @@ export function createLarkClient({ fetchImpl = fetch, logger, batchSize = 100 } 
             "content-type": "application/json",
           },
           body: JSON.stringify({
-            field_name: templateField.field_name,
-            type: templateField.type,
-            ...(property ? { property } : {}),
+            field_name: schemaField.name,
+            type: schemaField.type,
+            ...(schemaField.property
+              ? { property: structuredClone(schemaField.property) }
+              : {}),
           }),
         },
         `Lark create field ${fieldName} in ${tableId}`,
@@ -300,9 +297,8 @@ export function createLarkClient({ fetchImpl = fetch, logger, batchSize = 100 } 
           step: "lark_field_created",
           table_id: tableId,
           field_name: fieldName,
-          template_table_id: templateTableId,
         },
-        "Missing Lark field created",
+        "Missing Lark field created from schema",
       );
     }
     return missingNames;
@@ -451,9 +447,10 @@ export function createLarkClient({ fetchImpl = fetch, logger, batchSize = 100 } 
     getTenantAccessToken,
     searchAllRecords,
     filterRecordsByDate,
+    listTables,
     listFields,
     ensureDayKeyFormulaField,
-    ensureFieldsFromTemplate,
+    ensureFieldsFromSchema,
     searchRecordsByTextField,
     searchRecords,
     batchCreateRecords,
@@ -466,10 +463,11 @@ export const defaultLarkClient = createLarkClient();
 export const getTenantAccessToken = defaultLarkClient.getTenantAccessToken;
 export const searchAllRecords = defaultLarkClient.searchAllRecords;
 export const filterRecordsByDate = defaultLarkClient.filterRecordsByDate;
+export const listTables = defaultLarkClient.listTables;
 export const listFields = defaultLarkClient.listFields;
 export const ensureDayKeyFormulaField = defaultLarkClient.ensureDayKeyFormulaField;
-export const ensureFieldsFromTemplate =
-  defaultLarkClient.ensureFieldsFromTemplate;
+export const ensureFieldsFromSchema =
+  defaultLarkClient.ensureFieldsFromSchema;
 export const searchRecordsByTextField = defaultLarkClient.searchRecordsByTextField;
 export const searchRecords = defaultLarkClient.searchRecords;
 export const batchCreateRecords = defaultLarkClient.batchCreateRecords;

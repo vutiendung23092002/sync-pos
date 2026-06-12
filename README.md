@@ -140,6 +140,21 @@ DATABASE_SSL_REJECT_UNAUTHORIZED=false
 
 Workflow cũng mặc định dùng `false` nếu Variable này chưa được tạo.
 
+Schema Lark được định nghĩa trực tiếp trong `src/schemas/larkSchema.js`, không
+phụ thuộc vào bất kỳ bảng Lark mẫu nào. Khi chạy thật, field thiếu được tạo từ
+schema này. Field đã tồn tại nhưng sai type sẽ làm sync dừng; code không tự xóa
+hoặc đổi type để tránh mất dữ liệu.
+
+Kiểm tra hoặc bổ sung schema cho 48 bảng trong base test:
+
+```bash
+npm run schema:check
+npm run schema:apply
+```
+
+`schema:check` chỉ đọc metadata. `schema:apply` chỉ tạo field thiếu và field
+Formula `Ngày TD`.
+
 ## Phân bảng TD/CD theo tháng
 
 Mỗi đơn được đồng bộ độc lập vào 4 loại bảng:

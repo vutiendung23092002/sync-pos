@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
+import { getLarkFieldSchema } from "../schemas/larkSchema.js";
 import { syncTable } from "../services/syncTable.js";
 
 function createLarkClient(existingRecords) {
@@ -39,6 +40,7 @@ const common = {
   dayKeyFieldName: "Ngày TD",
   dayKeyValue: "2026.03.01",
   uniqueFieldName: "Unique Key",
+  fieldSchema: getLarkFieldSchema("order"),
 };
 
 test("dry run plans changes without writes", async () => {
@@ -114,16 +116,15 @@ test("missing Lark fields fail before any write", async () => {
   assert.deepEqual(client.calls, { create: [], update: [], delete: [] });
 });
 
-test("missing Lark fields are created from template before writing", async () => {
+test("missing Lark fields are created from schema before writing", async () => {
   const client = createLarkClient([]);
   let fieldsCreated = false;
   client.listFields = async () =>
     fieldsCreated
       ? [{ field_name: "Unique Key" }, { field_name: "Last Synced At" }]
       : [{ field_name: "Unique Key" }];
-  client.ensureFieldsFromTemplate = async (params) => {
-    assert.equal(params.templateBaseId, "template-base");
-    assert.equal(params.templateTableId, "template-table");
+  client.ensureFieldsFromSchema = async (params) => {
+    assert.equal(params.schema, common.fieldSchema);
     fieldsCreated = true;
   };
 
@@ -139,10 +140,6 @@ test("missing Lark fields are created from template before writing", async () =>
         },
       },
     ],
-    fieldTemplate: {
-      baseId: "template-base",
-      tableId: "template-table",
-    },
     dryRun: false,
     posFetchComplete: true,
   });

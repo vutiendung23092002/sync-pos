@@ -88,14 +88,6 @@ export function loadConfig(env = process.env) {
     lark: {
       appId: env.LARK_APP_ID,
       appSecret: env.LARK_APP_SECRET,
-      schemaTemplates: {
-        baseId:
-          env.LARK_TEMPLATE_BASE_ID ?? "HlQubD0ksa13z8sndtvlz2gSgVh",
-        orderTableId:
-          env.LARK_TEMPLATE_ORDER_TABLE_ID ?? "tblemP2P0H0TDsRc",
-        itemTableId:
-          env.LARK_TEMPLATE_ITEM_TABLE_ID ?? "tblgBf5wFHpY8rUW",
-      },
     },
     dateRange,
     dryRun: parseBoolean(env.DRY_RUN, "DRY_RUN"),

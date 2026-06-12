@@ -1,5 +1,6 @@
 import { buildLarkUniqueIndex, dedupeMappedRecords } from "../utils/dedupe.js";
 import { getLarkTextField } from "../utils/larkFields.js";
+import { findLarkSchemaIssues } from "../schemas/larkSchema.js";
 
 export async function syncTable({
   tableName,
@@ -15,7 +16,7 @@ export async function syncTable({
   deleteStatuses = [],
   dryRun = false,
   posFetchComplete = false,
-  fieldTemplate,
+  fieldSchema,
   logger,
 }) {
   const startedAt = Date.now();
@@ -33,6 +34,61 @@ export async function syncTable({
   const requiredFieldNames = [
     ...new Set(posRecords.flatMap((record) => Object.keys(record.fields || {}))),
   ];
+  let tableFields = await larkClient.listFields({
+    token,
+    baseId: tableConfig.base_id,
+    tableId: tableConfig.table_id,
+  });
+  let { missing: missingFieldNames, wrongType } = findLarkSchemaIssues(
+    tableFields,
+    fieldSchema,
+    requiredFieldNames,
+  );
+  if (wrongType.length) {
+    throw new Error(
+      `Lark table ${tableName} (${tableConfig.table_id}) has wrong field types: ${wrongType
+        .map(
+          ({ fieldName, expectedType, actualType }) =>
+            `${fieldName} expected=${expectedType} actual=${actualType}`,
+        )
+        .join(", ")}`,
+    );
+  }
+  if (
+    missingFieldNames.length &&
+    !dryRun &&
+    typeof larkClient.ensureFieldsFromSchema === "function"
+  ) {
+    await larkClient.ensureFieldsFromSchema({
+      token,
+      baseId: tableConfig.base_id,
+      tableId: tableConfig.table_id,
+      requiredFieldNames,
+      schema: fieldSchema,
+    });
+    tableFields = await larkClient.listFields({
+      token,
+      baseId: tableConfig.base_id,
+      tableId: tableConfig.table_id,
+    });
+    const refreshedIssues = findLarkSchemaIssues(
+      tableFields,
+      fieldSchema,
+      requiredFieldNames,
+    );
+    missingFieldNames = refreshedIssues.missing;
+    wrongType = refreshedIssues.wrongType;
+    if (wrongType.length) {
+      throw new Error(
+        `Lark table ${tableName} (${tableConfig.table_id}) has wrong field types after schema apply`,
+      );
+    }
+  }
+  if (missingFieldNames.length) {
+    throw new Error(
+      `Lark table ${tableName} (${tableConfig.table_id}) is missing fields: ${missingFieldNames.join(", ")}`,
+    );
+  }
   await larkClient.ensureDayKeyFormulaField({
     token,
     baseId: tableConfig.base_id,
@@ -41,48 +97,6 @@ export async function syncTable({
     dateFieldName,
     createIfMissing: !dryRun,
   });
-  let tableFields = await larkClient.listFields({
-    token,
-    baseId: tableConfig.base_id,
-    tableId: tableConfig.table_id,
-  });
-  const existingFieldNames = new Set(
-    tableFields.map((field) => field?.field_name).filter(Boolean),
-  );
-  let missingFieldNames = requiredFieldNames.filter(
-    (fieldName) => !existingFieldNames.has(fieldName),
-  );
-  if (
-    missingFieldNames.length &&
-    !dryRun &&
-    fieldTemplate &&
-    typeof larkClient.ensureFieldsFromTemplate === "function"
-  ) {
-    await larkClient.ensureFieldsFromTemplate({
-      token,
-      baseId: tableConfig.base_id,
-      tableId: tableConfig.table_id,
-      requiredFieldNames,
-      templateBaseId: fieldTemplate.baseId,
-      templateTableId: fieldTemplate.tableId,
-    });
-    tableFields = await larkClient.listFields({
-      token,
-      baseId: tableConfig.base_id,
-      tableId: tableConfig.table_id,
-    });
-    const refreshedNames = new Set(
-      tableFields.map((field) => field?.field_name).filter(Boolean),
-    );
-    missingFieldNames = requiredFieldNames.filter(
-      (fieldName) => !refreshedNames.has(fieldName),
-    );
-  }
-  if (missingFieldNames.length) {
-    throw new Error(
-      `Lark table ${tableName} (${tableConfig.table_id}) is missing fields: ${missingFieldNames.join(", ")}`,
-    );
-  }
 
   const larkRecords = await larkClient.searchRecordsByTextField({
     token,

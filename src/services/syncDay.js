@@ -1,6 +1,7 @@
 import { mapOrder } from "../mappers/mapOrder.js";
 import { mapOrderItems } from "../mappers/mapOrderItem.js";
 import { getLarkTextField } from "../utils/larkFields.js";
+import { getLarkFieldSchema } from "../schemas/larkSchema.js";
 import { syncTable } from "./syncTable.js";
 
 function collectSkus(orders) {
@@ -87,15 +88,6 @@ function totalSummaries(summaries) {
     }),
     { create: 0, update: 0, delete: 0, duplicates_deleted: 0 },
   );
-}
-
-function getFieldTemplate(config, kind) {
-  const templates = config.lark.schemaTemplates;
-  return {
-    baseId: templates.baseId,
-    tableId:
-      kind === "item" ? templates.itemTableId : templates.orderTableId,
-  };
 }
 
 export function createSyncDay({
@@ -222,7 +214,7 @@ export function createSyncDay({
           deleteStatuses: ["Đã xoá"],
           dryRun,
           posFetchComplete: posResult.complete,
-          fieldTemplate: getFieldTemplate(config, "order"),
+          fieldSchema: getLarkFieldSchema("order"),
           logger,
         }),
       );
@@ -245,7 +237,7 @@ export function createSyncDay({
           deleteStatuses: ["Đã xoá", "Đã huỷ"],
           dryRun,
           posFetchComplete: posResult.complete,
-          fieldTemplate: getFieldTemplate(config, "item"),
+          fieldSchema: getLarkFieldSchema("item"),
           logger,
         }),
       );
@@ -268,7 +260,7 @@ export function createSyncDay({
           deleteStatuses: ["Đã xoá"],
           dryRun,
           posFetchComplete: posResult.complete,
-          fieldTemplate: getFieldTemplate(config, "order"),
+          fieldSchema: getLarkFieldSchema("order"),
           logger,
         }),
       );
@@ -291,7 +283,7 @@ export function createSyncDay({
           deleteStatuses: ["Đã xoá", "Đã huỷ"],
           dryRun,
           posFetchComplete: posResult.complete,
-          fieldTemplate: getFieldTemplate(config, "item"),
+          fieldSchema: getLarkFieldSchema("item"),
           logger,
         }),
       );
