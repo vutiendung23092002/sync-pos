@@ -24,3 +24,6 @@ Thumbs.db
 tmp/
 temp/
 artifacts/
+
+# n8n
+n8n.example/
