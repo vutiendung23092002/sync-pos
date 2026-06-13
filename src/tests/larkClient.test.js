@@ -110,3 +110,65 @@ test("Lark day filter uses exact CurrentValue formula", async () => {
   );
   assert.equal(records.length, 1);
 });
+
+test("expired Lark token is refreshed and the request is retried once", async () => {
+  const authorizations = [];
+  let tokenRequests = 0;
+  let apiRequests = 0;
+  const client = createLarkClient({
+    credentials: {
+      appId: "app-id",
+      appSecret: "app-secret",
+    },
+    fetchImpl: async (url, options) => {
+      if (String(url).includes("/tenant_access_token/internal")) {
+        tokenRequests += 1;
+        return new Response(
+          JSON.stringify({
+            code: 0,
+            tenant_access_token:
+              tokenRequests === 1 ? "expired-token" : "refreshed-token",
+          }),
+          { status: 200 },
+        );
+      }
+
+      apiRequests += 1;
+      authorizations.push(new Headers(options.headers).get("authorization"));
+      if (apiRequests === 1) {
+        return new Response(
+          JSON.stringify({
+            code: 99991663,
+            msg: "Invalid access token for authorization. Please make a request with token attached.",
+          }),
+          { status: 400 },
+        );
+      }
+      return new Response(
+        JSON.stringify({
+          code: 0,
+          data: {
+            has_more: false,
+            items: [],
+          },
+        }),
+        { status: 200 },
+      );
+    },
+  });
+
+  const initialToken = await client.getTenantAccessToken();
+  const fields = await client.listFields({
+    token: initialToken,
+    baseId: "base",
+    tableId: "table",
+  });
+
+  assert.deepEqual(fields, []);
+  assert.equal(tokenRequests, 2);
+  assert.equal(apiRequests, 2);
+  assert.deepEqual(authorizations, [
+    "Bearer expired-token",
+    "Bearer refreshed-token",
+  ]);
+});

@@ -44,7 +44,10 @@ async function main() {
     );
 
     const posClient = createPosClient({ logger });
-    const larkClient = createLarkClient({ logger });
+    const larkClient = createLarkClient({
+      logger,
+      credentials: config.lark,
+    });
     const token = await larkClient.getTenantAccessToken(config.lark);
     const syncDay = createSyncDay({
       config,

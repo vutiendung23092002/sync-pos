@@ -8,14 +8,45 @@ function assertLarkSuccess(body, operation) {
     throw new Error(`${operation} returned an unexpected response shape`);
   }
   if (body.code !== 0) {
-    throw new Error(`${operation} failed: [${body.code}] ${body.msg || "Unknown error"}`);
+    const error = new Error(
+      `${operation} failed: [${body.code}] ${body.msg || "Unknown error"}`,
+    );
+    error.code = body.code;
+    error.body = body;
+    throw error;
   }
   return body.data ?? {};
 }
 
-export function createLarkClient({ fetchImpl = fetch, logger, batchSize = 100 } = {}) {
-  async function request(url, options, operation) {
-    const body = await fetchJsonWithRetry(url, options, {
+function isInvalidAccessTokenError(error) {
+  const detail = `${error?.message || ""} ${error?.body?.msg || ""}`.toLowerCase();
+  return (
+    detail.includes("invalid access token") ||
+    detail.includes("access token is invalid") ||
+    detail.includes("access token has expired") ||
+    detail.includes("token attached")
+  );
+}
+
+function withBearerToken(options, token) {
+  if (!token) return options;
+  const headers = new Headers(options?.headers);
+  headers.set("authorization", `Bearer ${token}`);
+  return { ...options, headers };
+}
+
+export function createLarkClient({
+  fetchImpl = fetch,
+  logger,
+  batchSize = 100,
+  credentials,
+} = {}) {
+  let cachedToken = null;
+  let refreshPromise = null;
+  let tokenCredentials = credentials;
+
+  async function executeRequest(url, options, operation, token) {
+    const body = await fetchJsonWithRetry(url, withBearerToken(options, token), {
       fetchImpl,
       logger,
       operation,
@@ -23,7 +54,36 @@ export function createLarkClient({ fetchImpl = fetch, logger, batchSize = 100 } 
     return assertLarkSuccess(body, operation);
   }
 
-  async function getTenantAccessToken({ appId, appSecret }) {
+  async function request(url, options, operation) {
+    const suppliedToken = new Headers(options?.headers)
+      .get("authorization")
+      ?.replace(/^Bearer\s+/i, "");
+    const activeToken = cachedToken || suppliedToken;
+
+    try {
+      return await executeRequest(url, options, operation, activeToken);
+    } catch (error) {
+      if (!tokenCredentials || !isInvalidAccessTokenError(error)) throw error;
+
+      if (!refreshPromise) {
+        refreshPromise = getTenantAccessToken(tokenCredentials).finally(() => {
+          refreshPromise = null;
+        });
+      }
+      const refreshedToken = await refreshPromise;
+      logger?.warn(
+        { operation },
+        "Lark access token expired; refreshed and retrying request",
+      );
+      return executeRequest(url, options, operation, refreshedToken);
+    }
+  }
+
+  async function getTenantAccessToken({
+    appId,
+    appSecret,
+  } = tokenCredentials || {}) {
+    tokenCredentials = { appId, appSecret };
     const body = await fetchJsonWithRetry(
       `${LARK_API_BASE}/auth/v3/tenant_access_token/internal`,
       {
@@ -40,6 +100,7 @@ export function createLarkClient({ fetchImpl = fetch, logger, batchSize = 100 } 
     }
     const token = body.tenant_access_token;
     if (!token) throw new Error("Lark token response is missing tenant_access_token");
+    cachedToken = token;
     return token;
   }
 
