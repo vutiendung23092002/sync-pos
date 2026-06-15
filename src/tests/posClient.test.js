@@ -3,9 +3,11 @@ import assert from "node:assert/strict";
 
 import { createPosClient, isAllowedOrderSource } from "../clients/posClient.js";
 
-test("POS source filter only accepts Facebook or empty source", () => {
+test("POS source filter accepts Facebook, Zalo, or empty source", () => {
   assert.equal(isAllowedOrderSource({ order_sources_name: "Facebook" }), true);
   assert.equal(isAllowedOrderSource({ order_sources_name: " facebook " }), true);
+  assert.equal(isAllowedOrderSource({ order_sources_name: "Zalo" }), true);
+  assert.equal(isAllowedOrderSource({ order_sources_name: " zalo " }), true);
   assert.equal(isAllowedOrderSource({ order_sources_name: null }), true);
   assert.equal(isAllowedOrderSource({}), true);
   assert.equal(isAllowedOrderSource({ order_sources_name: "Shopee" }), false);

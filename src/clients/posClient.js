@@ -2,10 +2,11 @@ import { getVietnamDayUnixRange } from "../utils/date.js";
 import { fetchJsonWithRetry } from "../utils/retry.js";
 
 const POS_API_BASE = "https://pos.pages.fm/api/v1";
+const ALLOWED_ORDER_SOURCES = new Set(["facebook", "zalo"]);
 
 export function isAllowedOrderSource(order) {
   const sourceName = order?.order_sources_name?.trim().toLowerCase();
-  return !sourceName || sourceName === "facebook";
+  return !sourceName || ALLOWED_ORDER_SOURCES.has(sourceName);
 }
 
 function assertObject(value, operation) {
