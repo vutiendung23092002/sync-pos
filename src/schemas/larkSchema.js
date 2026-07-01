@@ -95,7 +95,7 @@ export const ITEM_FIELD_SCHEMA = [
   number("Đơn giá", true),
   number("Giảm giá sản phẩm", true),
   number("Tổng giá nhập sản phẩm", true),
-  number("Giá vốn Kiot", true),
+  // number("Giá vốn Kiot", true),
   number("Giá trị bán trước hoàn", true),
   number("Giá trị bán", true),
   text("Ghi chú sản phẩm"),

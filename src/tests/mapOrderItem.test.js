@@ -28,7 +28,7 @@ function makeOrder(overrides = {}) {
   };
 }
 
-test("item mapping includes unique keys, category and cost", () => {
+test("item mapping includes unique keys and category", () => {
   const [mapped] = mapOrderItems(makeOrder(), {
     categoryMap: { 10: "Category A" },
     costMap: { "sku-1": 55 },
@@ -37,7 +37,7 @@ test("item mapping includes unique keys, category and cost", () => {
   assert.equal(mapped.uniqueKey, "item:123:789");
   assert.equal(mapped.fields["Order Unique Key"], "order:123");
   assert.deepEqual(mapped.fields["Danh mục"], ["Category A"]);
-  assert.equal(mapped.fields["Giá vốn Kiot"], 55);
+  assert.equal(Object.hasOwn(mapped.fields, "Giá vốn Kiot"), false);
   assert.equal(mapped.fields["Giá trị bán"], 95);
 });
 

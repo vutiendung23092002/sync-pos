@@ -351,7 +351,7 @@ Số lượng hoàn
 Đơn giá
 Giảm giá sản phẩm
 Tổng giá nhập sản phẩm
-Giá vốn Kiot
+<!-- Giá vốn Kiot -->
 Giá trị bán trước hoàn
 Giá trị bán
 Ghi chú sản phẩm

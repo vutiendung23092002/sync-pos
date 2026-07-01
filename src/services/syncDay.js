@@ -125,7 +125,7 @@ export function createSyncDay({
   posClient,
   larkClient,
   tableConfigService,
-  productCostService,
+  // productCostService,
   logger,
   token,
 }) {
@@ -180,11 +180,11 @@ export function createSyncDay({
       }),
     ]);
 
-    const skus = collectSkus(posResult.orders);
-    const costMap = await productCostService.getProductCostMap(skus);
+    // const skus = collectSkus(posResult.orders);
+    // const costMap = await productCostService.getProductCostMap(skus);
     const mappedOrders = posResult.orders.map((order) => mapOrder(order));
     const mappedItems = posResult.orders.flatMap((order) =>
-      mapOrderItems(order, { categoryMap, costMap }),
+      mapOrderItems(order, { categoryMap }),
     );
     const tdOrderDestinations = buildPeriodDestinations({
       configs: tdOrderConfigs,
@@ -221,8 +221,8 @@ export function createSyncDay({
         mapped_items: mappedItems.length,
         cd_order_destinations: cdOrderDestinations.length,
         cd_item_destinations: cdItemDestinations.length,
-        requested_skus: skus.length,
-        matched_costs: Object.keys(costMap).length,
+        // requested_skus: skus.length,
+        // matched_costs: Object.keys(costMap).length,
       },
       "POS records mapped and classified",
     );

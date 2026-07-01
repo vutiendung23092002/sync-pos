@@ -73,7 +73,7 @@ export function mapOrderItems(
         "Giảm giá sản phẩm": itemDiscount,
         "Tổng giá nhập sản phẩm":
           Number(variation.avg_price ?? 0) * (quantity - returnQuantity),
-        "Giá vốn Kiot": lowercaseSku ? costMap[lowercaseSku] ?? null : null,
+        // "Giá vốn Kiot": lowercaseSku ? costMap[lowercaseSku] ?? null : null,
         "Giá trị bán trước hoàn": quantity * retailPrice - itemDiscount,
         "Giá trị bán": (quantity - returnQuantity) * retailPrice - itemDiscount,
         "Ghi chú sản phẩm": item.note_product ?? null,
