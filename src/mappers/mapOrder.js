@@ -71,7 +71,7 @@ export function mapOrder(data, { now = Date.now } = {}) {
       COD: Number(data.cod ?? 0),
       "Điểm thưởng nhận được": Number(awardedPoint),
       "Điểm thưởng đã sử dụng": Number(data.prepaid_by_point?.point ?? 0),
-      "Tổng điểm thưởng": Number(data.customer?.reward_point ?? 0),
+      // "Tổng điểm thưởng": Number(data.customer?.reward_point ?? 0),
       "Gồm các mã sản phẩm": formatItemsList(data.items),
       "Mã khuyến mãi": getPromotionNames(data.activated_promotion_advances),
       "Ghi chú để in": data.note_print ?? null,

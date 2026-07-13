@@ -57,7 +57,7 @@ export const ORDER_FIELD_SCHEMA = [
   number("COD", true),
   number("Điểm thưởng nhận được"),
   number("Điểm thưởng đã sử dụng"),
-  number("Tổng điểm thưởng"),
+  // number("Tổng điểm thưởng"),
   text("Gồm các mã sản phẩm"),
   text("Mã khuyến mãi"),
   text("Ghi chú để in"),

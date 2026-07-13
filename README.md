@@ -303,7 +303,7 @@ Phí trả cho ĐVVC
 COD
 Điểm thưởng nhận được
 Điểm thưởng đã sử dụng
-Tổng điểm thưởng
+<!-- Tổng điểm thưởng --> Bỏ
 Gồm các mã sản phẩm
 Mã khuyến mãi
 Ghi chú để in
