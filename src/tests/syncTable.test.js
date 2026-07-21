@@ -118,18 +118,35 @@ test("missing Lark fields fail before any write", async () => {
 
 test("missing Lark fields are created from schema before writing", async () => {
   const customerIdFieldName = "ID Khách hàng";
+  const completedOrdersFieldName = "Số đơn hoàn thành";
   const client = createLarkClient([]);
   let fieldsCreated = false;
   client.listFields = async () =>
     fieldsCreated
-      ? [{ field_name: "Unique Key" }, { field_name: customerIdFieldName }]
+      ? [
+          { field_name: "Unique Key" },
+          { field_name: customerIdFieldName },
+          { field_name: completedOrdersFieldName },
+        ]
       : [{ field_name: "Unique Key" }];
   client.ensureFieldsFromSchema = async (params) => {
     assert.equal(params.schema, common.fieldSchema);
     assert.equal(params.requiredFieldNames.includes(customerIdFieldName), true);
+    assert.equal(
+      params.requiredFieldNames.includes(completedOrdersFieldName),
+      true,
+    );
     assert.deepEqual(
       params.schema.find((field) => field.name === customerIdFieldName),
       { name: customerIdFieldName, type: 1 },
+    );
+    assert.deepEqual(
+      params.schema.find((field) => field.name === completedOrdersFieldName),
+      {
+        name: completedOrdersFieldName,
+        type: 2,
+        property: { formatter: "0" },
+      },
     );
     fieldsCreated = true;
   };
@@ -143,6 +160,7 @@ test("missing Lark fields are created from schema before writing", async () => {
         fields: {
           "Unique Key": "order:1",
           [customerIdFieldName]: "789",
+          [completedOrdersFieldName]: 12,
         },
       },
     ],
@@ -368,6 +386,7 @@ test("Khách mới/cũ is populated when the existing field is blank", async () 
 
   const summary = await syncTable({
     ...common,
+    writeOnceFieldNames: [customerTypeFieldName],
     larkClient: client,
     mappedRecords: [
       {
@@ -411,6 +430,7 @@ test("Khách mới/cũ is preserved once it already has a value", async () => {
 
   const summary = await syncTable({
     ...common,
+    writeOnceFieldNames: [customerTypeFieldName],
     larkClient: client,
     mappedRecords: [
       {
@@ -435,6 +455,188 @@ test("Khách mới/cũ is preserved once it already has a value", async () => {
     ),
     false,
   );
+});
+
+test("Số đơn hoàn thành is preserved once it is non-zero", async () => {
+  const completedOrdersFieldName = "Số đơn hoàn thành";
+  const statusFieldName = "Trạng thái";
+  const client = createLarkClient([
+    {
+      record_id: "existing",
+      created_time: "100",
+      fields: {
+        "Unique Key": "order:1",
+        [statusFieldName]: "Mới",
+        [completedOrdersFieldName]: 3,
+      },
+    },
+  ]);
+  client.listFields = async () => [
+    { field_name: "Unique Key", type: 1 },
+    { field_name: statusFieldName, type: 3 },
+    { field_name: completedOrdersFieldName, type: 2 },
+  ];
+
+  const summary = await syncTable({
+    ...common,
+    writeOnceFieldNames: [completedOrdersFieldName],
+    larkClient: client,
+    mappedRecords: [
+      {
+        uniqueKey: "order:1",
+        fields: {
+          "Unique Key": "order:1",
+          [statusFieldName]: "Đã xác nhận",
+          [completedOrdersFieldName]: 5,
+        },
+      },
+    ],
+    dryRun: false,
+    posFetchComplete: true,
+  });
+
+  assert.equal(summary.updateCount, 1);
+  const updateFields = client.calls.update[0].records[0].fields;
+  assert.equal(updateFields[statusFieldName], "Đã xác nhận");
+  assert.equal(Object.hasOwn(updateFields, completedOrdersFieldName), false);
+});
+
+test("Số đơn hoàn thành can update while it is zero", async () => {
+  const completedOrdersFieldName = "Số đơn hoàn thành";
+  const client = createLarkClient([
+    {
+      record_id: "existing",
+      created_time: "100",
+      fields: {
+        "Unique Key": "order:1",
+        [completedOrdersFieldName]: 0,
+      },
+    },
+  ]);
+  client.listFields = async () => [
+    { field_name: "Unique Key", type: 1 },
+    { field_name: completedOrdersFieldName, type: 2 },
+  ];
+
+  const summary = await syncTable({
+    ...common,
+    writeOnceFieldNames: [completedOrdersFieldName],
+    larkClient: client,
+    mappedRecords: [
+      {
+        uniqueKey: "order:1",
+        fields: {
+          "Unique Key": "order:1",
+          [completedOrdersFieldName]: 5,
+        },
+      },
+    ],
+    dryRun: false,
+    posFetchComplete: true,
+  });
+
+  assert.equal(summary.updateCount, 1);
+  assert.equal(
+    client.calls.update[0].records[0].fields[completedOrdersFieldName],
+    5,
+  );
+});
+
+test("item category and Post ID are preserved once they have values", async () => {
+  const categoryFieldName = "Danh mục";
+  const postIdFieldName = "Post ID";
+  const statusFieldName = "Trạng thái";
+  const client = createLarkClient([
+    {
+      record_id: "existing",
+      created_time: "100",
+      fields: {
+        "Unique Key": "item:1",
+        [statusFieldName]: "Mới",
+        [categoryFieldName]: [{ name: "Danh mục thủ công" }],
+        [postIdFieldName]: "post-thủ-công",
+      },
+    },
+  ]);
+  client.listFields = async () => [
+    { field_name: "Unique Key", type: 1 },
+    { field_name: statusFieldName, type: 3 },
+    { field_name: categoryFieldName, type: 4 },
+    { field_name: postIdFieldName, type: 1 },
+  ];
+
+  const summary = await syncTable({
+    ...common,
+    recordType: "ITEM",
+    fieldSchema: getLarkFieldSchema("item"),
+    writeOnceFieldNames: [categoryFieldName, postIdFieldName],
+    larkClient: client,
+    mappedRecords: [
+      {
+        uniqueKey: "item:1",
+        fields: {
+          "Unique Key": "item:1",
+          [statusFieldName]: "Đã xác nhận",
+          [categoryFieldName]: ["Danh mục POS"],
+          [postIdFieldName]: "post-pos",
+        },
+      },
+    ],
+    dryRun: false,
+    posFetchComplete: true,
+  });
+
+  assert.equal(summary.updateCount, 1);
+  const updateFields = client.calls.update[0].records[0].fields;
+  assert.equal(updateFields[statusFieldName], "Đã xác nhận");
+  assert.equal(Object.hasOwn(updateFields, categoryFieldName), false);
+  assert.equal(Object.hasOwn(updateFields, postIdFieldName), false);
+});
+
+test("item category and Post ID can update when blank or zero", async () => {
+  const categoryFieldName = "Danh mục";
+  const postIdFieldName = "Post ID";
+  const client = createLarkClient([
+    {
+      record_id: "existing",
+      created_time: "100",
+      fields: {
+        "Unique Key": "item:1",
+        [categoryFieldName]: [],
+        [postIdFieldName]: "0",
+      },
+    },
+  ]);
+  client.listFields = async () => [
+    { field_name: "Unique Key", type: 1 },
+    { field_name: categoryFieldName, type: 4 },
+    { field_name: postIdFieldName, type: 1 },
+  ];
+
+  const summary = await syncTable({
+    ...common,
+    recordType: "ITEM",
+    fieldSchema: getLarkFieldSchema("item"),
+    writeOnceFieldNames: [categoryFieldName, postIdFieldName],
+    larkClient: client,
+    mappedRecords: [
+      {
+        uniqueKey: "item:1",
+        fields: {
+          "Unique Key": "item:1",
+          [categoryFieldName]: ["Danh mục POS"],
+          [postIdFieldName]: "post-pos",
+        },
+      },
+    ],
+    dryRun: false,
+    posFetchComplete: true,
+  });
+
+  assert.equal(summary.updateCount, 1);
+  const updateFields = client.calls.update[0].records[0].fields;
+  assert.deepEqual(updateFields[categoryFieldName], ["Danh mục POS"]);
+  assert.equal(updateFields[postIdFieldName], "post-pos");
 });
 
 test("debug logs changed fields and delete identities", async () => {

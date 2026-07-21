@@ -80,6 +80,7 @@ export function mapOrder(data, { now = Date.now } = {}) {
       "Trạng thái giao hàng": data.partner?.extend_update?.[0]?.status ?? null,
       "ID Khách hàng":
         data.customer?.id == null ? null : String(data.customer.id),
+      "Số đơn hoàn thành": Number(data.customer?.succeed_order_count ?? 0),
       "Khách hàng": data.customer?.name ?? null,
       "Số điện thoại":
         data.customer?.phone_numbers?.[0] ??

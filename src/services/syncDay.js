@@ -4,6 +4,9 @@ import { getLarkTextField } from "../utils/larkFields.js";
 import { getLarkFieldSchema } from "../schemas/larkSchema.js";
 import { syncTable } from "./syncTable.js";
 
+const ORDER_WRITE_ONCE_FIELD_NAMES = ["Khách mới/cũ", "Số đơn hoàn thành"];
+const ITEM_WRITE_ONCE_FIELD_NAMES = ["Danh mục", "Post ID"];
+
 function collectSkus(orders) {
   return [
     ...new Set(
@@ -246,6 +249,7 @@ export function createSyncDay({
           uniqueFieldName: "Unique Key",
           legacyIdentityFieldNames: ["Mã tuỳ chỉnh", "ID"],
           deleteStatuses: ["Đã xoá"],
+          writeOnceFieldNames: ORDER_WRITE_ONCE_FIELD_NAMES,
           dryRun,
           posFetchComplete: posResult.complete,
           fieldSchema: getLarkFieldSchema("order"),
@@ -273,6 +277,7 @@ export function createSyncDay({
           uniqueFieldName: "Unique Key",
           legacyIdentityFieldNames: ["ID"],
           deleteStatuses: ["Đã xoá", "Đã huỷ"],
+          writeOnceFieldNames: ITEM_WRITE_ONCE_FIELD_NAMES,
           dryRun,
           posFetchComplete: posResult.complete,
           fieldSchema: getLarkFieldSchema("item"),
@@ -300,6 +305,7 @@ export function createSyncDay({
           uniqueFieldName: "Unique Key",
           legacyIdentityFieldNames: ["Mã tuỳ chỉnh", "ID"],
           deleteStatuses: ["Đã xoá"],
+          writeOnceFieldNames: ORDER_WRITE_ONCE_FIELD_NAMES,
           dryRun,
           posFetchComplete: posResult.complete,
           fieldSchema: getLarkFieldSchema("order"),
@@ -327,6 +333,7 @@ export function createSyncDay({
           uniqueFieldName: "Unique Key",
           legacyIdentityFieldNames: ["ID"],
           deleteStatuses: ["Đã xoá", "Đã huỷ"],
+          writeOnceFieldNames: ITEM_WRITE_ONCE_FIELD_NAMES,
           dryRun,
           posFetchComplete: posResult.complete,
           fieldSchema: getLarkFieldSchema("item"),

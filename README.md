@@ -311,6 +311,7 @@ Miễn phí ship
 Đơn vị VC
 Trạng thái giao hàng
 ID Khách hàng
+Số đơn hoàn thành
 Khách hàng
 Số điện thoại
 Khách mới/cũ
