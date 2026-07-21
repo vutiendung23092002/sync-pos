@@ -343,6 +343,94 @@ test("changed business fields still update the existing record", async () => {
   assert.equal(client.calls.update.length, 1);
 });
 
+test("Khách mới/cũ is populated when the existing field is blank", async () => {
+  const customerTypeFieldName = "Khách mới/cũ";
+  const client = createLarkClient([
+    {
+      record_id: "existing",
+      created_time: "100",
+      fields: {
+        "Unique Key": "order:1",
+        [customerTypeFieldName]: null,
+      },
+    },
+  ]);
+  client.listFields = async () => [
+    { field_name: "Unique Key", type: 1 },
+    { field_name: customerTypeFieldName, type: 3 },
+  ];
+
+  const summary = await syncTable({
+    ...common,
+    larkClient: client,
+    mappedRecords: [
+      {
+        uniqueKey: "order:1",
+        fields: {
+          "Unique Key": "order:1",
+          [customerTypeFieldName]: "Mới",
+        },
+      },
+    ],
+    dryRun: false,
+    posFetchComplete: true,
+  });
+
+  assert.equal(summary.updateCount, 1);
+  assert.equal(
+    client.calls.update[0].records[0].fields[customerTypeFieldName],
+    "Mới",
+  );
+});
+
+test("Khách mới/cũ is preserved once it already has a value", async () => {
+  const customerTypeFieldName = "Khách mới/cũ";
+  const statusFieldName = "Trạng thái";
+  const client = createLarkClient([
+    {
+      record_id: "existing",
+      created_time: "100",
+      fields: {
+        "Unique Key": "order:1",
+        [statusFieldName]: "Mới",
+        [customerTypeFieldName]: "Cũ",
+      },
+    },
+  ]);
+  client.listFields = async () => [
+    { field_name: "Unique Key", type: 1 },
+    { field_name: statusFieldName, type: 3 },
+    { field_name: customerTypeFieldName, type: 3 },
+  ];
+
+  const summary = await syncTable({
+    ...common,
+    larkClient: client,
+    mappedRecords: [
+      {
+        uniqueKey: "order:1",
+        fields: {
+          "Unique Key": "order:1",
+          [statusFieldName]: "Đã xác nhận",
+          [customerTypeFieldName]: "Mới",
+        },
+      },
+    ],
+    dryRun: false,
+    posFetchComplete: true,
+  });
+
+  assert.equal(summary.updateCount, 1);
+  assert.equal(client.calls.update.length, 1);
+  assert.equal(
+    Object.hasOwn(
+      client.calls.update[0].records[0].fields,
+      customerTypeFieldName,
+    ),
+    false,
+  );
+});
+
 test("debug logs changed fields and delete identities", async () => {
   const statusFieldName = "Trạng thái";
   const legacyFieldName = "Mã tuỳ chỉnh";

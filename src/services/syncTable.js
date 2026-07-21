@@ -12,6 +12,20 @@ const IDENTITY_FIELD_NAMES = [
   "Order ID",
   "Unique Key",
 ];
+const WRITE_ONCE_FIELD_NAMES = ["Khách mới/cũ"];
+
+function buildUpdateFields(desiredFields, existingFields) {
+  const updateFields = { ...desiredFields };
+
+  for (const fieldName of WRITE_ONCE_FIELD_NAMES) {
+    const existingValue = getLarkTextField(existingFields?.[fieldName]);
+    if (existingValue?.trim()) {
+      delete updateFields[fieldName];
+    }
+  }
+
+  return updateFields;
+}
 
 function getFirstTextField(fields, fieldNames) {
   for (const fieldName of fieldNames) {
@@ -220,8 +234,9 @@ export async function syncTable({
     }
 
     if (existing?.record_id) {
+      const updateFields = buildUpdateFields(record.fields, existing.fields);
       const changedFieldDetails = getChangedLarkFieldDetails({
-        desiredFields: record.fields,
+        desiredFields: updateFields,
         existingFields: existing.fields,
         fieldSchema,
       });
@@ -229,7 +244,7 @@ export async function syncTable({
         (change) => change.field_name,
       );
       if (changedFieldNames.length) {
-        toUpdate.push({ record_id: existing.record_id, fields: record.fields });
+        toUpdate.push({ record_id: existing.record_id, fields: updateFields });
         updateDebugDetails.push({
           ...buildRecordDebugIdentity({
             posRecord: record,
