@@ -310,6 +310,7 @@ Ghi chú để in
 Miễn phí ship
 Đơn vị VC
 Trạng thái giao hàng
+ID Khách hàng
 Khách hàng
 Số điện thoại
 Khách mới/cũ

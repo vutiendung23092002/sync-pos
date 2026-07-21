@@ -78,6 +78,8 @@ export function mapOrder(data, { now = Date.now } = {}) {
       "Miễn phí ship": data.is_free_shipping === true ? "TRUE" : "FALSE",
       "Đơn vị VC": data.partner?.partner_name ?? null,
       "Trạng thái giao hàng": data.partner?.extend_update?.[0]?.status ?? null,
+      "ID Khách hàng":
+        data.customer?.id == null ? null : String(data.customer.id),
       "Khách hàng": data.customer?.name ?? null,
       "Số điện thoại":
         data.customer?.phone_numbers?.[0] ??

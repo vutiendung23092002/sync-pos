@@ -64,6 +64,7 @@ export const ORDER_FIELD_SCHEMA = [
   singleSelect("Miễn phí ship"),
   singleSelect("Đơn vị VC"),
   text("Trạng thái giao hàng"),
+  text("ID Khách hàng"),
   text("Khách hàng"),
   text("Số điện thoại"),
   singleSelect("Khách mới/cũ"),

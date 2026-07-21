@@ -117,14 +117,20 @@ test("missing Lark fields fail before any write", async () => {
 });
 
 test("missing Lark fields are created from schema before writing", async () => {
+  const customerIdFieldName = "ID Khách hàng";
   const client = createLarkClient([]);
   let fieldsCreated = false;
   client.listFields = async () =>
     fieldsCreated
-      ? [{ field_name: "Unique Key" }, { field_name: "Last Synced At" }]
+      ? [{ field_name: "Unique Key" }, { field_name: customerIdFieldName }]
       : [{ field_name: "Unique Key" }];
   client.ensureFieldsFromSchema = async (params) => {
     assert.equal(params.schema, common.fieldSchema);
+    assert.equal(params.requiredFieldNames.includes(customerIdFieldName), true);
+    assert.deepEqual(
+      params.schema.find((field) => field.name === customerIdFieldName),
+      { name: customerIdFieldName, type: 1 },
+    );
     fieldsCreated = true;
   };
 
@@ -136,7 +142,7 @@ test("missing Lark fields are created from schema before writing", async () => {
         uniqueKey: "order:1",
         fields: {
           "Unique Key": "order:1",
-          "Last Synced At": 1,
+          [customerIdFieldName]: "789",
         },
       },
     ],
